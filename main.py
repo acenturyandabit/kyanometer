@@ -2,9 +2,15 @@ import cv2
 import asyncio
 import phonesource
 
-#source = cv2.VideoCapture(0)
-source = phonesource.VideoCapture()
-#source = cv2.VideoCapture("videosample.mp4")
+class awaitableVideoCapture:
+    def __init__(self,sourceArg):
+        self.source=cv2.VideoCapture(sourceArg)
+    async def read(self):
+        return self.source.read()
+
+source = awaitableVideoCapture(0)
+#source = phonesource.VideoCapture()
+#source = awaitableVideoCapture("videosample.mp4")
 
 def localDisplay(frame, result):
     cv2.imshow("frame",frame)
