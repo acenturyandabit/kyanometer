@@ -32,6 +32,7 @@ def segmented_text_detection(image,chunkW=128, chunkH=128, **kwargs):
 
 
 def fetchTextCoords(img, candidates):
+    results=[]
     for(x,y,w,h) in boxes:
         startX = int(x*ratioWidth)
         startY = int(y*ratioHeight)
@@ -43,12 +44,8 @@ def fetchTextCoords(img, candidates):
             text = drawOn[ startY - boundary:endY + boundary, startX - boundary:endX + boundary]
             text = cv2.cvtColor(text.astype(np.uint8), cv2.COLOR_BGR2GRAY)
             textRecongized = pytesseract.image_to_string(text)
-            drawOn = cv2.putText(drawOn, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
-            # draw the bounding box on the image
-
-        cv2.rectangle(drawOn, (startX, startY), (endX, endY), color, width)
-
-    # return orig
+            results.append((textRecongized,(x,y,w,h)))
+    return results
 
 
 def text_detection(image, east, min_confidence, width, height):
