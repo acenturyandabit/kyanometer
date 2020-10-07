@@ -15,6 +15,42 @@ from opencv_text_detection.decode import decode
 from opencv_text_detection.draw import drawPolygons, drawBoxes
 
 
+
+
+def segmented_text_detection(image,chunkW=128, chunkH=128, **kwargs):
+    default_text_args={
+        "east":"frozen_east_text_detection.pb",
+        "min_confidence":0.5
+    }
+    for key,value in kwargs.items():
+        default_text_args[key]=value
+    maxX=int(np.ceil(image.shape[0]/chunkW))
+    maxY=int(np.ceil(image.shape[1]/chunkH))
+    for dX in range(maxX):
+        for dY in range(maxY):
+            text_detection(image[dX*chunkW:dX*chunkW+chunkW,dY*chunkH:dY*chunkH+chunkH,:],default_text_args['east'],default_text_args['min_confidence'],chunkW,chunkH)
+
+
+def fetchTextCoords(img, candidates):
+    for(x,y,w,h) in boxes:
+        startX = int(x*ratioWidth)
+        startY = int(y*ratioHeight)
+        endX = int((x+w)*ratioWidth)
+        endY = int((y+h)*ratioHeight)
+
+        if any(idx<2 for idx in [startX,startY]) == False:
+            boundary = 2
+            text = drawOn[ startY - boundary:endY + boundary, startX - boundary:endX + boundary]
+            text = cv2.cvtColor(text.astype(np.uint8), cv2.COLOR_BGR2GRAY)
+            textRecongized = pytesseract.image_to_string(text)
+            drawOn = cv2.putText(drawOn, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
+            # draw the bounding box on the image
+
+        cv2.rectangle(drawOn, (startX, startY), (endX, endY), color, width)
+
+    # return orig
+
+
 def text_detection(image, east, min_confidence, width, height):
     # load the input image and grab the image dimensions
     # image = cv2.imread(image)
@@ -32,6 +68,8 @@ def text_detection(image, east, min_confidence, width, height):
     image = cv2.resize(image, (newW, newH))
     (imageHeight, imageWidth) = image.shape[:2]
 
+    cv2.imshow("resized",image)
+
     # define the two output layer names for the EAST detector model that
     # we are interested -- the first is the output probabilities and the
     # second can be used to derive the bounding box coordinates of text
@@ -43,10 +81,19 @@ def text_detection(image, east, min_confidence, width, height):
     # print("[INFO] loading EAST text detector...")
     net = cv2.dnn.readNet(east)
 
+
+    # calculate the mean of RGB values
+    imshape = image.shape
+    flattenedImageChannels=image.reshape((imshape[0]*imshape[1],3))
+    means = np.mean(flattenedImageChannels)
+    print (means)
     # construct a blob from the image and then perform a forward pass of
     # the model to obtain the two output layer sets
-    blob = cv2.dnn.blobFromImage(image, 1.0, (imageWidth, imageHeight), (123.68, 116.78, 103.94), swapRB=True, crop=False)
 
+    blob = cv2.dnn.blobFromImage(image, 1.0, (imageWidth, imageHeight), means, swapRB=True, crop=False)
+    print (type(blob))
+    print (blob.shape)
+    print (image.shape)
     start = time.time()
     net.setInput(blob)
     (scores, geometry) = net.forward(layerNames)
@@ -91,6 +138,9 @@ def text_detection(image, east, min_confidence, width, height):
             # print("[INFO] {} NMS took {:.6f} seconds and found {} boxes".format(name, end - start, len(drawrects)))
 
             drawOn = orig.copy()
+            # create a CLAHE object (Arguments are optional).
+            clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            drawOn = clahe.apply(drawOn)
             
             drawBoxes(drawOn, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
 

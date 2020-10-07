@@ -19,21 +19,21 @@ while(cap.isOpened()):
   if ret == True:
     frame  = cv2.resize(frame,(1024,928),fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
     frame  = td.text_detection(frame,
-                               os.path.join(dir_path, 'opencv_text_detection/frozen_east_text_detection.pb'),
-                               0.5, 
-                               1024, 
-                               928)
+                               east=os.path.join(dir_path, 'opencv_text_detection/frozen_east_text_detection.pb'),
+                               min_confidence=0.5, 
+                               width=1024, 
+                               height=928)
 
     # Display the resulting frame
     # cv2.imshow('Frame',frame)
 
     # Press Q on keyboard to  exit
-    if cv2.waitKey(25) & 0xFF == ord('q'):
+    if cv2.waitKey(0) & 0xFF == ord('q'):
       break
-
   # Break the loop
   else: 
     break
+  print ("frame")
 
 # When everything done, release the video capture object
 cap.release()
