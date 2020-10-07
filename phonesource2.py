@@ -1,40 +1,87 @@
-import numpy as np
 import asyncio
 import json
 
-try:
-    import websockets
-except ImportError:
-    print("Please `pip install websockets` to continue.")
-    exit(0)
-try:
-    from aiohttp import web
-except ImportError:
-    print("Please `pip install aiohttp` to continue.")
-    exit(0)
+from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
+import uuid
+from aiohttp import web
 
 webApp=None
+
+class VideoEmitter(MediaStreamTrack):
+    
+    kind = "video"
+
+    def __init__(self, track, localSender):
+        super().__init__()  
+        self.track = track
+        self.localSender=localSender
+
+    async def recv(self):
+        frame = await self.track.recv()
+
+        self.localSender.image = frame.to_ndarray(format="bgr24")
+        self.localSender.newFrame=True
+        return frame
+
 
 class VideoCapture:
     def __init__(self):
         global webApp
-        self.websocket=None
         self.newFrame=False
         self.w=0
         self.h=0
-        # start listening for websocket
-        start_server= websockets.serve(self.acceptWSClient, port=3988, max_size=None)
-        asyncio.get_event_loop().run_until_complete(start_server)
         # Also setup a web page to send and receive from
         # also serve a static website that gives control.
-        indexFile=open("static/index.html")
-        fileToSend = "\n".join(indexFile.readlines())
-        indexFile.close()
         async def handle(request):
+            indexFile=open("static/index2.html")
+            fileToSend = "\n".join(indexFile.readlines())
+            indexFile.close()
             return web.Response(text=fileToSend, content_type="text/html")
         app = web.Application()
         app.add_routes([web.get('/', handle)])
+        app.router.add_post("/offer", self.offer)
         webApp=app
+
+    async def offer(self,request):
+        params = await request.json()
+        offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
+
+        pc = RTCPeerConnection()
+        pc_id = "PeerConnection(%s)" % uuid.uuid4()
+
+
+        @pc.on("datachannel")
+        def on_datachannel(channel):
+            @channel.on("message")
+            def on_message(message):
+                if isinstance(message, str) and message.startswith("ping"):
+                    channel.send("pong" + message[4:])
+
+        @pc.on("iceconnectionstatechange")
+        async def on_iceconnectionstatechange():
+            if pc.iceConnectionState == "failed":
+                await pc.close()
+                pcs.discard(pc)
+
+        @pc.on("track")
+        def on_track(track):
+
+            if track.kind == "video":
+                pc.addTrack(VideoEmitter(track,self))
+
+        # handle offer
+        await pc.setRemoteDescription(offer)
+
+        # send answer
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+
+        return web.Response(
+            content_type="application/json",
+            text=json.dumps(
+                {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
+            ),
+        )
 
 
     async def read(self):

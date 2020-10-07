@@ -1,6 +1,6 @@
 import cv2
 import asyncio
-import phonesource
+import phonesource2
 
 class awaitableVideoCapture:
     def __init__(self,sourceArg):
@@ -8,9 +8,7 @@ class awaitableVideoCapture:
     async def read(self):
         return self.source.read()
 
-source = awaitableVideoCapture(0)
-#source = phonesource.VideoCapture()
-#source = awaitableVideoCapture("videosample.mp4")
+source = awaitableVideoCapture("http://192.168.43.1:8083/video")
 
 def localDisplay(frame, result):
     cv2.imshow("frame",frame)
@@ -18,7 +16,7 @@ def localDisplay(frame, result):
     pass
 
 displayResult = localDisplay
-#displayResult = phonesource.output
+#displayResult = CustomWebserver.output
 
 
 async def main():
@@ -31,5 +29,5 @@ async def main():
             displayResult(frame, result={})
 
 asyncio.get_event_loop().create_task(main())
-phonesource.start()
+#phonesource2.start()
 asyncio.get_event_loop().run_forever()
