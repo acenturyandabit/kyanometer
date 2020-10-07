@@ -98,7 +98,7 @@ def text_detection(image, east, min_confidence, width, height):
 
             # imText = cv2.rotate(imText, cv2.ROTATE_90_CLOCKWISE)
             cv2.imshow(title,drawOn)
-            # cv2.imshow("Text Detection", imText)
+            # cv2.imshow("Text Detection", drawOn)
 
             cv2.moveWindow(title, 150+i*300, 150)
         else:
@@ -109,7 +109,7 @@ def text_detection(image, east, min_confidence, width, height):
             cv2.imshow(title,drawOn)
 
 
-    cv2.waitKey(0)
+    cv2.waitKey(1)
 
 
     # # convert rects to polys
