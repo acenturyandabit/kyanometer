@@ -7,6 +7,9 @@ import numpy as np
 import argparse
 import time
 import cv2
+import pytesseract
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\Rishi PC\AppData\Local\Tesseract-OCR\tesseract.exe"
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -25,7 +28,12 @@ args = vars(ap.parse_args())
 # load the input image and grab the image dimensions
 image = cv2.imread(args["image"])
 orig = image.copy()
+img2 = orig.copy()
 (H, W) = image.shape[:2]
+
+gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+ret, thresh1 = cv2.threshold(gray_img, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV) 
+# image = thresh1
 
 # set the new width and height and then determine the ratio in change
 # for both the width and height
@@ -116,6 +124,9 @@ for y in range(0, numRows):
 # boxes
 boxes = non_max_suppression(np.array(rects), probs=confidences)
 
+file = open("recognized.txt", "w+") 
+file.write("") 
+file.close() 
 # loop over the bounding boxes
 for (startX, startY, endX, endY) in boxes:
 	# scale the bounding box coordinates based on the respective
@@ -127,6 +138,20 @@ for (startX, startY, endX, endY) in boxes:
 
 	# draw the bounding box on the image
 	cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+	# Crop image to regions of bounding boxes
+	crop_img = img2[(startY):(endY), (startX):(endX)]
+	# file = open("recognized.txt", "a") 
+	configs = ("-l eng --oem 1 --psm 7")
+	text = pytesseract.image_to_string(crop_img, config=configs)
+	print(text)
+	
+	# Appending the text into file 
+	# file.write(text)
+	# file.write("\n")
+
+	# Close the file 
+	# file.close 
 
 # show the output image
 cv2.imshow("Text Detection", orig)
