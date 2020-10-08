@@ -1,5 +1,6 @@
 # kyanometer
-reveal hidden stores of wonder
+Flexibility and freedom for vision-impared shoppers
+
 
 
 ## How to use with phone
