@@ -12,6 +12,7 @@ def speech_digester_loop(sayQ):
         ended=True
     engine.connect('finished-utterance',onEnd)
     localQ=[]
+    nextUtterance=None
     while True:
         try:
             nextUtterance=sayQ.get(False)
