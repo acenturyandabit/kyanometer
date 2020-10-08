@@ -16,6 +16,7 @@ def drawBoxes(drawOn, boxes, ratioWidth, ratioHeight, color=(0, 255, 0), width=1
     textIm = drawOn.copy()
     textcache = {}
     for box in boxes:
+        print (box)
         (x,y,w,h)=box
         
         startX = int(x*ratioWidth) # Gets starting x 

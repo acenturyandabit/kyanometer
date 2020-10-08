@@ -123,7 +123,7 @@ def text_detection(image, east, min_confidence, width, height):
     for i, function in enumerate(functions):
 
         start = time.time()
-        indicies = nms.boxes(rects, confidences, nms_function=function, confidence_threshold=confidenceThreshold,
+        indicies = nms.rboxes(rects, confidences, nms_function=function, confidence_threshold=confidenceThreshold,
                                  nsm_threshold=nmsThreshold)
         end = time.time()
 
