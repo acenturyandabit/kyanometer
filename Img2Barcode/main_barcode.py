@@ -10,7 +10,6 @@
 # Imports
 from pyzbar import pyzbar
 import cv2
-from collections import deque
 
 
 # Function Definition
@@ -19,9 +18,9 @@ def Barcode_Detect (image):
     # Find barcodes in image (QR/CODE128) and decode each
     barcodes = pyzbar.decode(image)
 
-    # Initialise deque to hold data
-    Data_Deque = deque()
-    Type_Deque = deque()
+    # Initialise Lists to hold data
+    Data_List = list()
+    Type_List = list()
 
     # Iterate through each detected barcode
     for barcode in barcodes:
@@ -37,9 +36,9 @@ def Barcode_Detect (image):
         # Identify type of barcode (QR or CODE128)
         barcodeType = barcode.type
 
-        # Append data to Deque
-        Data_Deque.append(barcodeData)
-        Type_Deque.append(barcodeType)
+        # Append data to lists
+        Data_List.append(barcodeData)
+        Type_List.append(barcodeType)
         
         # Store barcode data in string
         text = "{} ({})".format(barcodeData, barcodeType)
@@ -48,10 +47,14 @@ def Barcode_Detect (image):
             0.5, (0, 0, 255), 2)
 
     # Display output image
-    cv2.imshow("Image", image)
-    cv2.waitKey(0)
+    # cv2.imshow("Image", image)
+    # cv2.waitKey(0)
+
+    # Convert Lists to Tuple for output
+    Data_Tuple = tuple(Data_List)
+    Type_Tuple = tuple(Type_List)
     
-    return Data_Deque
+    return Data_Tuple
 
 
 
@@ -59,6 +62,6 @@ def Barcode_Detect (image):
 if __name__ == '__main__':
 
     image = cv2.imread(r"tests\test1.jpg")
-    Out_Deque = Barcode_Detect(image)
+    Out_Tuple = Barcode_Detect(image)
     
-    print(Out_Deque)
+    print(Out_Tuple)
