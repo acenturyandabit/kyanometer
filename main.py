@@ -10,7 +10,7 @@ videoSource=0
 
 
 
-from Img2Barcode import Barcode
+from Img2Barcode import Barcode_Func_file as BarcodeReader
 
 
 
@@ -72,12 +72,10 @@ if __name__=="__main__":
                 if len(commandQueue):
                     latestCommand= commandQueue.pop(0)
                     if latestCommand=="helloworld":
-                        print ("sent hlwd")
                         mpto.output_text("hello world")
                     elif latestCommand=="barcode":
-                        pass
-                        #(result, sparklyFrame) = Barcode.BarcodeDetect(frame)
-                        #mpto.output_text(result)
+                        (result, sparklyFrame) = Barcode.BarcodeDetect(frame)
+                        mpto.output_text(result)
                     else:
                         mpto.output_text("unknown command")
                 cv2.imshow("Video feed",frame)
