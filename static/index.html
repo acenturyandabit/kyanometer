@@ -1,63 +1,40 @@
 <body>
-    <video playsinline autoplay></video>
-    <canvas>
-    </canvas>
-    <button id="myvoice">Press to test TTS</button>
+    <style>
+        div,
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        div,
+        button,
+        img {
+            flex: 1 1 50%;
+        }
+    </style>
+    <div>
+        <button onclick="sendWS('helloworld')">Say hi</button>
+        <button onclick="sendWS('barcode')">Scan barcode</button>
+        <button onclick="sendWS('getprices')">Scan prices</button>
+        <button onclick="sendWS('readtext')">Read text</button>
+    </div>
+    <img src="/video">
     <script>
         let ws;
-        let videoStarted = false;
-        let canvas = document.querySelector('canvas');
-        const video = document.querySelector('video');
 
         function makews() {
-            ws = new WebSocket("ws://" + window.location.hostname + ":3988");
-            if (!videoStarted) {
-                beginVideo();
-                videoStarted = true;
-            }
-            ws.addEventListener("open", (e) => {
-                ws.send(JSON.stringify({
-                    w: video.videoWidth,
-                    h: video.videoHeight
-                }));
-            })
+            ws = new WebSocket("ws://" + window.location.hostname + ":3943");
             ws.addEventListener("close", () => {
                 makews();
+            })
+            ws.addEventListener("open", () => {
+                document.querySelector("img").src = "/video";
             })
         }
         makews();
 
-        function beginVideo() {
-            navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: true
-            }).then((stream) => {
-                video.srcObject = stream;
-                setTimeout(() => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    let ctx = canvas.getContext('2d');
-                    setInterval(() => {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        ws.send(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
-                    }, 1000);
-                })
-            });
+        function sendWS(str) {
+            ws.send(str);
         }
-
-
-
-        const listenBtn = document.getElementById('myvoice');
-
-        listenBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-
-            const msg = new SpeechSynthesisUtterance(
-                "Hello, hope my code is helpful"
-            );
-            window.speechSynthesis.speak(msg);
-        });
     </script>
 </body>
