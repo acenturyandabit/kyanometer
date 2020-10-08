@@ -11,7 +11,7 @@ net = cv2.dnn.readNet("frozen_east_text_detection.pb")
 
 
 def text_detector(image):
-	orig = image
+	orig = image.copy() # dont draw on the original camera feed
 	(H, W) = image.shape[:2]
 
 	(newW, newH) = (320, 320)
@@ -79,7 +79,7 @@ def text_detector(image):
 			confidences.append(scoresData[x])
 
 	boxes = non_max_suppression(np.array(rects), probs=confidences)
-
+	allTheText=""
 	for (startX, startY, endX, endY) in boxes:
 
 		startX = int(startX * rW)
@@ -91,9 +91,10 @@ def text_detector(image):
 		text = orig[startY-boundary:endY+boundary, startX - boundary:endX + boundary]
 		text = cv2.cvtColor(text.astype(np.uint8), cv2.COLOR_BGR2GRAY)
 		textRecongized = pytesseract.image_to_string(text)
+		allTheText=allTheText+textRecongized
 		cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 3)
 		orig = cv2.putText(orig, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
-	return orig
+	return (allTheText,orig)
 
 cap = cv2.VideoCapture("Portrait_Kmart.mp4")
 

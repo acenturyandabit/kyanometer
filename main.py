@@ -13,8 +13,9 @@ videoSource=0
 from Img2Barcode import main_barcode as BarcodeReader
 from Img2Barcode.Barcode_Dict import Dict_Barcode
 
+from HaoDetect import textDetectRecog
 
-
+from evanTextDetect import doDetection as priceDetector
 
 if __name__=="__main__":
     # we are multithreading so be safe
@@ -77,9 +78,22 @@ if __name__=="__main__":
                     elif latestCommand=="barcode":
                         (result, sparklyFrame) = BarcodeReader.Barcode_Detect(frame)
                         if (result):
-                            mpto.output_text(result)
+                            try:
+                                mpto.output_text(Dict_Barcode[result])
+                            except KeyError:
+                                mpto.output_text("Sorry, we couldnt find that product")
                         else:
                             mpto.output_text("No barcode found")
+                    elif latestCommand == "readtext":
+                        (result,sparklyFrame)=textDetectRecog.text_detector(frame)
+                        mpto.output_text("Packaging begins:")
+                        mpto.output_text(result)
+                        mpto.output_text("Packaging ends")
+                    elif latestCommand == "getprices":
+                        (result,sparklyFrame)=priceDetector.doDetection(frame)
+                        mpto.output_text("On shelf, top to bottom, left to right:")
+                        mpto.output_text(result)
+                        mpto.output_text("End shelf")
                     else:
                         mpto.output_text("unknown command")
                 cv2.imshow("Video feed",frame)
