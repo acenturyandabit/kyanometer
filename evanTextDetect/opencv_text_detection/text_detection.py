@@ -53,18 +53,54 @@ def text_detection(image, east, min_confidence, width, height):
     # image = cv2.imread(image)
     image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
     orig = image.copy()
+
+
     hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    lower_white = np.array([80, -10, 131]) 
+    lower_white = np.array([80, 0, 131]) 
     upper_white = np.array([160,  30, 291])
     image_mask = cv2.inRange(hsv,lower_white,upper_white)
-    cv2.imshow("mask",image_mask)
-    res = cv2.bitwise_and(image, image, cv2.bitwise_not(image_mask))
-    cv2.imshow("resized",res)
-    image = res.copy()
+
+
+    noiseDownMask=np.array(image_mask)
+    noiseDownFrame=np.array(image)
+
+    kernel = np.ones((2,2),np.uint8) # the 5 by 5 tells the computer how much to erode by.
+    noiseDownMask = cv2.erode(noiseDownMask,kernel,iterations = 1)
+    noiseDownMask = cv2.dilate(noiseDownMask,kernel,iterations = 1)
+
+    # the mask is only 2D so we need to and it with each channel of H,S,V
+    noiseDownFrame[:,:,0] = cv2.bitwise_and(noiseDownFrame[:,:,0],noiseDownMask)
+    noiseDownFrame[:,:,1] = cv2.bitwise_and(noiseDownFrame[:,:,1],noiseDownMask)
+    noiseDownFrame[:,:,2] = cv2.bitwise_and(noiseDownFrame[:,:,2],noiseDownMask)
+
+    # convert it back into the original color space
+    # noiseDownFrame = cv2.cvtColor(noiseDownFrame,cv2.COLOR_HSV2BGR)
+
+    cv2.imshow("noise reduced", noiseDownFrame) # display it
+
+    res = cv2.bitwise_and(image, image, mask =image_mask)
+
+
+    imgray  = cv2.cvtColor(noiseDownFrame,cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 127, 255, 0)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)\
     
-    # lower_black = np.array([0,0,0])
-    # upper_black = np.array([64,64,180])
-    (origHeight, origWidth) = image.shape[:2]
+    filter_conts = []
+    # threshold_area = 1000
+    for conts in contours:
+        rect = cv2.contourArea(conts)          #I have used min Area rect for better result
+        if(rect > 2000) and rect < 6000:
+            filter_conts.append(conts)
+
+    # ret,mask = cv2.threshold(filter_conts,10,255, 1)
+    out_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(out_mask, filter_conts, -1, 255, cv2.FILLED, 1)                                        
+    noiseDownFrame = cv2.bitwise_and(noiseDownFrame,noiseDownFrame, mask = out_mask)
+    # cv2.drawContours(noiseDownFrame, filter_conts, -1, (255,255,0), 2)
+    cv2.imshow("cnt",noiseDownFrame)
+
+
+    (origHeight, origWidth) = noiseDownFrame.shape[:2]
 
     # set the new width and height and then determine the ratio in change
     # for both the width and height
@@ -73,10 +109,8 @@ def text_detection(image, east, min_confidence, width, height):
     ratioHeight = origHeight / float(newH)
 
     # resize the image and grab the new image dimensions
-    image = cv2.resize(image, (newW, newH))
-    (imageHeight, imageWidth) = image.shape[:2]
-
-    cv2.imshow("resized",image)
+    noiseDownFrame= cv2.resize(noiseDownFrame, (newW, newH))
+    (imageHeight, imageWidth) = noiseDownFrame.shape[:2]
 
     # define the two output layer names for the EAST detector model that
     # we are interested -- the first is the output probabilities and the
@@ -91,17 +125,17 @@ def text_detection(image, east, min_confidence, width, height):
 
 
     # calculate the mean of RGB values
-    imshape = image.shape
-    flattenedImageChannels=image.reshape((imshape[0]*imshape[1],3))
+    imshape = noiseDownFrame.shape
+    flattenedImageChannels= noiseDownFrame.reshape((imshape[0]*imshape[1],3))
     means = np.mean(flattenedImageChannels)
     print (means)
+
     # construct a blob from the image and then perform a forward pass of
     # the model to obtain the two output layer sets
-
-    blob = cv2.dnn.blobFromImage(image, 1.0, (imageWidth, imageHeight), means, swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage( noiseDownFrame, 1.0, (imageWidth, imageHeight), means, swapRB=True, crop=False)
     print (type(blob))
     print (blob.shape)
-    print (image.shape)
+    print ( noiseDownFrame.shape)
     start = time.time()
     net.setInput(blob)
     (scores, geometry) = net.forward(layerNames)
@@ -124,10 +158,8 @@ def text_detection(image, east, min_confidence, width, height):
         offsets.append(b['offset'])
         thetas.append(b['angle'])
 
-    ##########################################################
-
     # functions = [nms.felzenszwalb.nms, nms.fast.nms, nms.malisiewicz.nms]
-    functions = [nms.felzenszwalb.nms]
+    functions = [nms.malisiewicz.nms]
 
     # print("[INFO] Running nms.boxes . . .")
 
@@ -152,7 +184,7 @@ def text_detection(image, east, min_confidence, width, height):
             # drawOn = clahe.apply(grayed)
             
             drawBoxes(drawOn, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
-
+            drawBoxes(noiseDownFrame, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
             title = "nms.boxes {}".format(name)
 
             # imText = cv2.rotate(imText, cv2.ROTATE_90_CLOCKWISE)
