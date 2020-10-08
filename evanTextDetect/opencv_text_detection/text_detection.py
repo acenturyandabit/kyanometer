@@ -53,6 +53,17 @@ def text_detection(image, east, min_confidence, width, height):
     # image = cv2.imread(image)
     image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
     orig = image.copy()
+    hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+    lower_white = np.array([80, -10, 131]) 
+    upper_white = np.array([160,  30, 291])
+    image_mask = cv2.inRange(hsv,lower_white,upper_white)
+    cv2.imshow("mask",image_mask)
+    res = cv2.bitwise_and(image, image, cv2.bitwise_not(image_mask))
+    cv2.imshow("resized",res)
+    image = res.copy()
+    
+    # lower_black = np.array([0,0,0])
+    # upper_black = np.array([64,64,180])
     (origHeight, origWidth) = image.shape[:2]
 
     # set the new width and height and then determine the ratio in change
@@ -136,8 +147,9 @@ def text_detection(image, east, min_confidence, width, height):
 
             drawOn = orig.copy()
             # create a CLAHE object (Arguments are optional).
-            clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            drawOn = clahe.apply(drawOn)
+            # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            # grayed = cv2.cvtColor(drawOn.astype(np.uint8), cv2.COLOR_BGR2GRAY)
+            # drawOn = clahe.apply(grayed)
             
             drawBoxes(drawOn, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
 
@@ -147,7 +159,6 @@ def text_detection(image, east, min_confidence, width, height):
             cv2.imshow(title,drawOn)
             # cv2.imshow("Text Detection", drawOn)
 
-            cv2.moveWindow(title, 150+i*300, 150)
         else:
             name = function.__module__.split('.')[-1].title()
             drawOn = orig.copy()
