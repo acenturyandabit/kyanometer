@@ -11,7 +11,7 @@ videoSource=0
 
 
 from Img2Barcode import main_barcode as BarcodeReader
-from Img2Barcode import Dict_Barcode
+from Img2Barcode.Barcode_Dict import Dict_Barcode
 
 
 
