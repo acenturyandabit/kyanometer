@@ -12,19 +12,22 @@ def speech_digester_loop(sayQ):
         ended=True
     engine.connect('finished-utterance',onEnd)
     localQ=[]
-    nextUtterance=None
     while True:
+        nextUtterance=None
         try:
             nextUtterance=sayQ.get(False)
         except queue.Empty:
             pass
         if nextUtterance:
+            print ("saying hlw")
             localQ.append(nextUtterance)
         if (len(localQ)) and ended:
             if (localQ[0]=="terminate"):
                 break
             ended=not localQ[0][1] # if we must wait for end then set ended to false
             engine.stop()
+            print ("saying hlw")
+            print (localQ)
             engine.say(localQ[0][0]) # unfortunately this is blocking on windows
             localQ.pop(0)
         engine.iterate()

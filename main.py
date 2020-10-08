@@ -23,19 +23,18 @@ if __name__=="__main__":
         global controlSocket
         global commandQueue
         if controlSocket is not None:
-            controlSocket.close()
+            await controlSocket.close()
         controlSocket=ws
         try:
             async for message in ws:
                 #decode messages
                 # message is in format (dx,dy)... unless its not
-                commandQueue.push(message)
+                commandQueue.append(message)
         except websockets.exceptions.ConnectionClosedError:
             print("disconnected")
             pass
     start_server= websockets.serve(handleWSClient, port=3943)
     asyncio.get_event_loop().run_until_complete(start_server)
-
 
     bufferFrame = None
     bufferFlip=False
@@ -54,21 +53,26 @@ if __name__=="__main__":
 
     mpto.start_engine()
     async def main():
+        throttle=0
         isOK=True
         global bufferFrame
         global bufferFlip
         sparklyFrame=None
+        source = cv2.VideoCapture(videoSource)
         while isOK:
-            source = cv2.VideoCapture(videoSource)
             isOK, frame = source.read()
             # do processing
             if isOK:
-                bufferFrame=frame
-                bufferFlip=True
+                if throttle==10:
+                    bufferFrame=frame
+                    bufferFlip=True
+                    throttle=0
+                throttle=throttle+1
 
                 if len(commandQueue):
-                    latestCommand= commandQueue[0]
+                    latestCommand= commandQueue.pop(0)
                     if latestCommand=="helloworld":
+                        print ("sent hlwd")
                         mpto.output_text("hello world")
                     elif latestCommand=="barcode":
                         pass
@@ -80,11 +84,13 @@ if __name__=="__main__":
                 if sparklyFrame:
                     cv2.imshow("Kyanometer output",sparklyFrame)
                 key=cv2.waitKey(1)
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.1)
                 pass
             else:
                 break
         mpto.all_text_complete()
+        source.release()
+        cv2.destroyAllWindows()
         return
 
 
