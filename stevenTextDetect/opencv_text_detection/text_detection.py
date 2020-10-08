@@ -14,6 +14,7 @@ from opencv_text_detection import utils
 from opencv_text_detection.decode import decode
 from opencv_text_detection.draw import drawPolygons, drawBoxes
 
+import pytesseract
 
 
 
@@ -51,8 +52,101 @@ def fetchTextCoords(img, candidates):
 def text_detection(image, east, min_confidence, width, height):
     # load the input image and grab the image dimensions
     # image = cv2.imread(image)
+    # apply a CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+
     image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
     orig = image.copy()
+    hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+    hsv[:,:,2]=clahe.apply(hsv[:,:,2]) 
+
+    def extractNumberishContours(upperLimit, lowerLimit):
+        return contours
+
+    contours = extractNumberishContours([0, 0, 200],[180,  30, 255]) # white ones
+    contours = contours + extractNumberishContours([0, 0, 0],[180,  255, 60]) # black ones
+
+    # paste the contours onto their own little rectangles
+    miniImgList=[]
+    for c in contours:
+        (x,y,w,h)=cv2.boundingRect(contour)
+        minicanvas =  np.zeros((w+20,h+20))
+        cv2.fillPoly(minicanvas,adjustedContour,255,offset=(-x+10,-y+10))
+        miniImgList.append((minicanvas,x,y))
+    
+    # feed them through the tesseract
+    for (mc,x,y) in miniImgList:
+        fatText=mc.copy()
+        for i in range(3):
+            fatText=np.append(fatText,mc,1)
+        custom_config = r'--oem 3 --psm 6 outputbase digits'
+        
+        textRecongized = pytesseract.image_to_string(text, config=custom_config)
+        # we will get multiple copies of recurring character
+        # take the most common character
+        textRecongized=pattern.sub("",textRecongized) # nerf all weird characters
+            textRecongized=textRecongized.lower()
+            parts=textRecongized.split(" ")
+            partVotes={}
+            for p in parts:
+                if p not in partVotes:
+                    partVotes[p]=0
+                partVotes[p] = partVotes[p] + 1
+            # get the entries in the dictionary, sort them by occurence, then take the first part (the actual word)
+            sortedPartVotes=list(partVotes.items())
+            sortedPartVotes.sort(key=lambda i: i[1],reverse=True)
+            if sortedPartVotes:
+                textRecongized=sortedPartVotes[0][0]
+                textcache[textRecongized] = [startX, startY, endX, endY]
+            
+            # draw the bounding box on the image
+
+
+    for text in textcache:
+        coords = textcache[text]
+        drawOn = cv2.putText(drawOn, text, (coords[0],coords[1]-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102,48,35), 2, cv2.LINE_AA) 
+            # drawOn = cv2.putText(drawOn, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
+        cv2.rectangle(drawOn, (coords[0], coords[1]), (coords[2], coords[3]), color, width)
+
+    # Draw onto final image
+
+    lower_white = np.array([0, 0, 200]) 
+    upper_white = np.array([180,  30, 255])
+    image_mask = cv2.inRange(hsv,lower_white,upper_white)
+
+    lower_black = np.array([0, 0, 0]) 
+    upper_black = np.array([180,  255, 60])
+    black_mask = cv2.inRange(hsv,lower_black,upper_black)
+
+    image_mask=cv2.bitwise_or(image_mask,black_mask)
+
+    ## open and close
+    kernel = np.ones((2,2),np.uint8) # the 5 by 5 tells the computer how much to erode by.
+    image_mask = cv2.dilate(image_mask,kernel,iterations = 1)
+    image_mask = cv2.erode(image_mask,kernel,iterations = 1)
+
+    cv2.imshow("mask",black_mask)
+    
+    contours, hierarchy = cv2.findContours(image_mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+    blankImage = np.zeros(image_mask.shape)
+
+    # filter contours by area
+    goodContours=[]
+    for contour in contours:
+        area=cv2.contourArea(contour)
+        (x,y,w,h) = cv2.boundingRect(contour)
+        if area>50 and area<250 and h/w <10/8 and h/w>5/8:
+            goodContours.append(contour)
+            cv2.polylines(blankImage,contour,True,(255),1)
+
+
+
+
+
+    cv2.imshow("blankImage",blankImage)
+    return 
+    # lower_black = np.array([0,0,0])
+    # upper_black = np.array([64,64,180])
     (origHeight, origWidth) = image.shape[:2]
 
     # set the new width and height and then determine the ratio in change
@@ -123,7 +217,7 @@ def text_detection(image, east, min_confidence, width, height):
     for i, function in enumerate(functions):
 
         start = time.time()
-        indicies = nms.rboxes(rects, confidences, nms_function=function, confidence_threshold=confidenceThreshold,
+        indicies = nms.boxes(rects, confidences, nms_function=function, confidence_threshold=confidenceThreshold,
                                  nsm_threshold=nmsThreshold)
         end = time.time()
 
@@ -156,7 +250,7 @@ def text_detection(image, east, min_confidence, width, height):
             cv2.imshow(title,drawOn)
 
 
-    cv2.waitKey(1)
+    cv2.waitKey(0)
 
 
     # # convert rects to polys

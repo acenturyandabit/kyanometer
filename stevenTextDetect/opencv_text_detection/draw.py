@@ -16,7 +16,6 @@ def drawBoxes(drawOn, boxes, ratioWidth, ratioHeight, color=(0, 255, 0), width=1
     textIm = drawOn.copy()
     textcache = {}
     for box in boxes:
-        print (box)
         (x,y,w,h)=box
         
         startX = int(x*ratioWidth) # Gets starting x 
@@ -32,7 +31,9 @@ def drawBoxes(drawOn, boxes, ratioWidth, ratioHeight, color=(0, 255, 0), width=1
             for i in range(3):
                 fatText=np.append(fatText,text,1)
             #text = cv2.cvtColor(text.astype(np.uint8), cv2.COLOR_BGR2GRAY)
-            textRecongized = pytesseract.image_to_string(fatText)
+            custom_config = r'--oem 3 --psm 6 outputbase digits'
+            
+            textRecongized = pytesseract.image_to_string(text, config=custom_config)
             # we will get multiple copies of recurring strings
             # take the longest, most common string, priority on length
             textRecongized=pattern.sub("",textRecongized) # nerf all weird characters
@@ -59,6 +60,7 @@ def drawBoxes(drawOn, boxes, ratioWidth, ratioHeight, color=(0, 255, 0), width=1
             # drawOn = cv2.putText(drawOn, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
         cv2.rectangle(drawOn, (coords[0], coords[1]), (coords[2], coords[3]), color, width)
         
+
 
     # return orig
 

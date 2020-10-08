@@ -14,7 +14,8 @@ from opencv_text_detection import utils
 from opencv_text_detection.decode import decode
 from opencv_text_detection.draw import drawPolygons, drawBoxes
 
-
+import re
+pattern = re.compile('[^\w\d\. ]+')
 
 
 def segmented_text_detection(image,chunkW=128, chunkH=128, **kwargs):
