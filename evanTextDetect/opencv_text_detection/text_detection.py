@@ -12,7 +12,10 @@ import numpy as np
 
 from opencv_text_detection import utils
 from opencv_text_detection.decode import decode
-from opencv_text_detection.draw import drawPolygons, drawBoxes
+from opencv_text_detection.draw import drawPolygons, drawBoxes, drawBoxesDebug, detectInOne
+
+import pytesseract
+
 
 import re
 pattern = re.compile('[^\w\d\. ]+')
@@ -184,12 +187,14 @@ def text_detection(image, east, min_confidence, width, height):
             # grayed = cv2.cvtColor(drawOn.astype(np.uint8), cv2.COLOR_BGR2GRAY)
             # drawOn = clahe.apply(grayed)
             
-            drawBoxes(drawOn, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
-            drawBoxes(noiseDownFrame, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
+            #drawBoxes(drawOn, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
+            #drawBoxes(noiseDownFrame, drawrects, ratioWidth, ratioHeight, (0, 255, 0), 2)
+            drawBoxesDebug(noiseDownFrame,drawOn,drawrects,ratioWidth,ratioHeight,(0,255,0),2)
             title = "nms.boxes {}".format(name)
 
             # imText = cv2.rotate(imText, cv2.ROTATE_90_CLOCKWISE)
             cv2.imshow(title,drawOn)
+            cv2.imshow("noisedown",noiseDownFrame)
             # cv2.imshow("Text Detection", drawOn)
 
         else:
@@ -232,6 +237,93 @@ def text_detection(image, east, min_confidence, width, height):
     #     cv2.moveWindow(title, 150+i*300, 150)
 
     # cv2.waitKey(1)
+
+
+oldFrames=[]
+
+def text_detection_alt(image, east, min_confidence, width, height):
+    global oldFrames
+    # load the input image and grab the image dimensions
+    # image = cv2.imread(image)
+    image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    orig = image.copy()
+
+
+    hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+    lower_white = np.array([80, 0, 131]) 
+    upper_white = np.array([160,  30, 291])
+    image_mask = cv2.inRange(hsv,lower_white,upper_white)
+
+
+    noiseDownMask=np.array(image_mask)
+    noiseDownFrame=np.array(image)
+
+    kernel = np.ones((2,2),np.uint8) # the 5 by 5 tells the computer how much to erode by.
+    noiseDownMask = cv2.erode(noiseDownMask,kernel,iterations = 1)
+    noiseDownMask = cv2.dilate(noiseDownMask,kernel,iterations = 1)
+
+    # the mask is only 2D so we need to and it with each channel of H,S,V
+    noiseDownFrame[:,:,0] = cv2.bitwise_and(noiseDownFrame[:,:,0],noiseDownMask)
+    noiseDownFrame[:,:,1] = cv2.bitwise_and(noiseDownFrame[:,:,1],noiseDownMask)
+    noiseDownFrame[:,:,2] = cv2.bitwise_and(noiseDownFrame[:,:,2],noiseDownMask)
+
+    # convert it back into the original color space
+    # noiseDownFrame = cv2.cvtColor(noiseDownFrame,cv2.COLOR_HSV2BGR)
+
+
+
+    #cv2.imshow("noise reduced", noiseDownFrame) # display it
+
+    res = cv2.bitwise_and(image, image, mask =image_mask)
+
+
+    imgray  = cv2.cvtColor(noiseDownFrame,cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 127, 255, 0)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)\
+    
+    filter_conts = []
+    results=[]
+    # threshold_area = 1000
+    for conts in contours:
+        rect = cv2.contourArea(conts)          #I have used min Area rect for better result
+        if(rect > 2000) and rect < 6000:
+            # directly get the bounding box and throw it at tesseract
+            (x,y,w,h)=cv2.boundingRect(conts)
+            snippet = orig[y:y+h,x:x+w,:]
+            text=detectInOne(snippet)
+            if (text):
+                results.append([text,x,y,w,h])
+            else:
+                results.append(["",x,y,w,h])
+            filter_conts.append(conts)
+    newFrames = []
+    # check for overlaps between results and oldframes
+    def betterOf(a,b):
+        return a if len(a)>len(b) else b
+    for r in results:
+        matchingOld=False
+        for f in oldFrames:
+            if (r[1]+r[3]/2)>f[1] and (r[1]+r[3]/2)<f[1]+f[3] and (r[2]+r[4]/2)>f[2] and (r[2]+r[4]/2)<f[2]+f[4]:
+                r[0]=betterOf(r[0],f[0])
+                matchingOld=True
+        r.append(matchingOld)
+        newFrames.append(r)
+    oldFrames=newFrames
+
+    # ret,mask = cv2.threshold(filter_conts,10,255, 1)
+    #out_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    #cv2.drawContours(out_mask, filter_conts, -1, 255, cv2.FILLED, 1)                                        
+    #noiseDownFrame = cv2.bitwise_and(noiseDownFrame,noiseDownFrame, mask = out_mask)
+
+    for r in results:
+        cv2.putText(orig, r[0], (r[1],r[2]-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2, cv2.LINE_AA) 
+        # drawOn = cv2.putText(drawOn, textRecongized, (endX,endY+5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA) 
+        cv2.rectangle(orig, (r[1], r[2]), (r[1]+r[3], r[2]+r[4]), (0,255,0) if r[5] else (255,0,0), 2)
+
+    # cv2.drawContours(noiseDownFrame, filter_conts, -1, (255,255,0), 2)
+    #cv2.imshow("cnt",orig)
+    #cv2.waitKey(0)
+    return orig
 
 
 def text_detection_command():
