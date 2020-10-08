@@ -1,4 +1,4 @@
-# alethiometer
+# kyanometer
 reveal hidden stores of wonder
 
 
