@@ -10,7 +10,7 @@ videoSource=0
 
 
 
-from Img2Barcode import Barcode_Func_file as BarcodeReader
+from Img2Barcode import main_barcode as BarcodeReader
 
 
 
@@ -74,12 +74,15 @@ if __name__=="__main__":
                     if latestCommand=="helloworld":
                         mpto.output_text("hello world")
                     elif latestCommand=="barcode":
-                        (result, sparklyFrame) = Barcode.BarcodeDetect(frame)
-                        mpto.output_text(result)
+                        (result, sparklyFrame) = BarcodeReader.Barcode_Detect(frame)
+                        if (result):
+                            mpto.output_text(result)
+                        else:
+                            mpto.output_text("No barcode found")
                     else:
                         mpto.output_text("unknown command")
                 cv2.imshow("Video feed",frame)
-                if sparklyFrame:
+                if sparklyFrame is not None:
                     cv2.imshow("Kyanometer output",sparklyFrame)
                 key=cv2.waitKey(1)
                 await asyncio.sleep(0.1)

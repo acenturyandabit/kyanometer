@@ -14,7 +14,7 @@ import cv2
 
 # Function Definition
 def Barcode_Detect (image):
-
+    image =image.copy()
     # Find barcodes in image (QR/CODE128) and decode each
     barcodes = pyzbar.decode(image)
 
@@ -49,13 +49,10 @@ def Barcode_Detect (image):
     # Display output image
     # cv2.imshow("Image", image)
     # cv2.waitKey(0)
-
-    # Convert Lists to Tuple for output
-    Data_Tuple = tuple(Data_List)
-    Type_Tuple = tuple(Type_List)
-    
-    return Data_Tuple
-
+    if len(Data_List):
+        return (Data_List[0],image)
+    else:
+        return (None,image)
 
 
 # Main Function
